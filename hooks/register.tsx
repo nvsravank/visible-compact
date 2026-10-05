@@ -213,7 +213,7 @@ export const register: Register = (on, options) => {
 
   on('ui.render', { component: 'Pane', requestId: PANE }, async ($, e) => {
     const ui = $.ui.resolve(e)
-    const { Box, Text, Button } = ui
+    const { Box, Text, Button, Markdown } = ui
     const all = await read($, index)
     if (all.length === 0) return <Text dimColor>No compaction recorded for this session yet.</Text>
 
@@ -340,7 +340,7 @@ export const register: Register = (on, options) => {
                 · msg {chunk.m + 1}
                 {chunk.n > 1 ? ` · part ${chunk.i + 1}/${chunk.n}` : ''}
               </Text>
-              <Text wrap="wrap">{chunk.text}</Text>
+              <Markdown text={chunk.text} />
             </Box>
           ))}
           {pager && (
