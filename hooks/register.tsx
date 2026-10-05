@@ -1,7 +1,7 @@
 import { atom, read, update } from 'claude-code'
 import type { EngineInterface, Register } from 'claude-code'
 
-import type { Chunk, CompactMeta, Side, ViewMode } from '../types'
+import type { Chunk, CompactMeta, Side, Theme, ViewMode } from '../types'
 import { chunkMessages } from './chunk'
 
 /** Chunks per file: 100 × 4,000 chars stays well under the 4 MiB a file read or write allows. */
@@ -89,17 +89,32 @@ export const readChunks = async (
 }
 
 const PANE = 'visible-compact'
-const TITLE = 'Your last compact'
+const TITLE = 'Your compaction history'
 const COMMAND = 'show-last-compact'
 // Below this many body columns the two sides stack instead of sitting side by side.
 const SIDE_BY_SIDE_MIN = 80
 // Chunks drawn per page of each column; at 4,000 chars a chunk, a page is at most 40k chars.
 const PAGE_CHUNKS = 10
+// Plugins aren't told the app's theme, so the person picks with the ☀/☾ toggle (as in
+// multirepo-diff-mod). Each side's color heads its column and marks its number in the tokens
+// line. Solid hex only: the desktop did not draw rgba().
+type Palette = Record<Side | 'user' | 'assistant', string>
+const PALETTES: Record<Theme, Palette> = {
+  light: { after: '#1a7f37', before: '#9a6700', user: '#0969da', assistant: '#8250df' },
+  dark: { after: '#7ee787', before: '#e3b341', user: '#79c0ff', assistant: '#d2a8ff' },
+}
+const THEME_STORE_KEY = 'theme'
 
 const index = atom({ plugin: 'visible-compact', key: 'index' } as const, [])
 const selected = atom({ plugin: 'visible-compact', key: 'selected' } as const, null)
 const view = atom({ plugin: 'visible-compact', key: 'view' } as const, 'both')
 const pages = atom({ plugin: 'visible-compact', key: 'pages' } as const, { before: 0, after: 0 })
+const theme = atom({ plugin: 'visible-compact', key: 'theme' } as const, 'light')
+
+const toggleTheme = async ($: EngineInterface) => {
+  const next = await update($, theme, current => (current === 'light' ? 'dark' : 'light'))
+  await $.store.set(THEME_STORE_KEY, next)
+}
 
 const tokens = (n?: number) =>
   n === undefined ? '?' : n >= 1000 ? `${Math.round(n / 1000).toLocaleString()}k` : String(n)
@@ -108,8 +123,7 @@ const clock = (at: number) => new Date(at).toLocaleString([], { dateStyle: 'shor
 
 const who = (meta: CompactMeta) => (meta.agentId === undefined ? 'main' : (meta.agentLabel ?? `agent ${meta.agentId}`))
 
-const optionLabel = (meta: CompactMeta) =>
-  `${clock(meta.at)} · ${who(meta)} · ${meta.trigger} · ${tokens(meta.tokensBefore)} → ${tokens(meta.tokensAfter)}`
+const optionLabel = (meta: CompactMeta) => `${clock(meta.at)} · ${who(meta)} · ${meta.trigger}`
 
 const agentLabel = async ($: EngineInterface, agentId: string) => {
   const agent = (await $.agent.list()).find(a => a.id === agentId)
@@ -128,11 +142,14 @@ export const register: Register = (on, options) => {
   on('session.start', async ($, e, next) => {
     await $.command.register({
       name: COMMAND,
-      description: 'Reopen "Your last compact": what was compacted, side by side with what came back',
+      description: 'Reopen "Your compaction history": what was compacted, side by side with what came back',
     })
     // Compactions live on disk under the session id, so a restart or --resume picks them up again.
     const saved = await readIndex($)
     await update($, index, () => saved)
+    // Restore the light/dark pick saved in an earlier session.
+    const savedTheme = await $.store.get(THEME_STORE_KEY)
+    if (savedTheme === 'light' || savedTheme === 'dark') await update($, theme, () => savedTheme)
 
     return next(e)
   })
@@ -191,44 +208,39 @@ export const register: Register = (on, options) => {
     await show($, null)
     await $.ui.open({ id: PANE, title: TITLE })
 
-    return { text: 'Opened "Your last compact".' }
+    return { text: 'Opened "Your compaction history".' }
   })
 
   on('ui.render', { component: 'Pane', requestId: PANE }, async ($, e) => {
     const ui = $.ui.resolve(e)
     const { Box, Text, Button } = ui
     const all = await read($, index)
-    const heading = (
-      <Text bold color="cyan">
-        {TITLE}
-      </Text>
-    )
-    if (all.length === 0)
-      return (
-        <Box flexDirection="column">
-          {heading}
-          <Text dimColor>No compaction recorded for this session yet.</Text>
-        </Box>
-      )
+    if (all.length === 0) return <Text dimColor>No compaction recorded for this session yet.</Text>
 
     const pick = await read($, selected)
     const meta = all.find(m => m.id === pick) ?? all[all.length - 1]!
     const mode = await read($, view)
     const page = await read($, pages)
     const columns = e.props.bodyColumns
+    const colorTheme = await read($, theme)
+    const colors = PALETTES[colorTheme]
 
     const setView = (next: ViewMode) => () => void update($, view, () => next)
     // Laid out as the columns are: after on the left, before on the right.
     const toggle = (
       <Box gap={1}>
-        <Button plain hotkey="a" dimColor={mode !== 'after'} onPress={setView('after')}>
-          ◧
+        <Button plain dimColor={mode !== 'after'} onPress={setView('after')}>
+          ◧ After
         </Button>
-        <Button plain hotkey="s" dimColor={mode !== 'both'} onPress={setView('both')}>
-          ◫
+        <Button plain dimColor={mode !== 'both'} onPress={setView('both')}>
+          ◫ Both
         </Button>
-        <Button plain hotkey="b" dimColor={mode !== 'before'} onPress={setView('before')}>
-          ◨
+        <Button plain dimColor={mode !== 'before'} onPress={setView('before')}>
+          ◨ Before
+        </Button>
+        {/* Shows the mode a press switches to: ☾ while light, ☀ while dark. */}
+        <Button plain onPress={() => void toggleTheme($)}>
+          {colorTheme === 'light' ? '☾' : '☀'}
         </Button>
       </Box>
     )
@@ -253,19 +265,18 @@ export const register: Register = (on, options) => {
         </Box>
       )
 
-    const summary = [
-      `${meta.trigger}${meta.agentId === undefined ? '' : ` · ${who(meta)}`}`,
-      clock(meta.at),
-      `took ${(meta.durationMs / 1000).toFixed(1)}s`,
-      `tokens ${tokens(meta.tokensBefore)} → ${tokens(meta.tokensAfter)}`,
-      `messages ${meta.messages.before} → ${meta.messages.after}`,
-      meta.usage &&
-        `summarizer in ${tokens(meta.usage.input_tokens + meta.usage.cache_read_input_tokens + meta.usage.cache_creation_input_tokens)} / out ${tokens(meta.usage.output_tokens)}`,
-    ]
-      .filter(Boolean)
-      .join(' · ')
+    // When, who and what triggered it are in the picker; message counts head each column.
+    const stats = (
+      <Box justifyContent="space-between">
+        <Text dimColor>
+          Tokens reduced to <Text color={colors.after}>{tokens(meta.tokensAfter)}</Text> from{' '}
+          <Text color={colors.before}>{tokens(meta.tokensBefore)}</Text>
+        </Text>
+        <Text dimColor>took {(meta.durationMs / 1000).toFixed(1)}s</Text>
+      </Box>
+    )
 
-    const column = async (side: Side, width: number, keys: { prev: string; next: string }) => {
+    const column = async (side: Side, width: number) => {
       const total = meta.chunks[side]
       const pageCount = Math.max(1, Math.ceil(total / PAGE_CHUNKS))
       const at = Math.min(page[side], pageCount - 1)
@@ -273,31 +284,33 @@ export const register: Register = (on, options) => {
       const turn = (by: number) => () =>
         void update($, pages, p => ({ ...p, [side]: Math.max(0, Math.min(pageCount - 1, at + by)) }))
 
+      const pager = pageCount > 1 && (
+        <Box gap={1}>
+          <Button plain dimColor={at === 0} onPress={turn(-1)}>
+            ‹ Previous
+          </Button>
+          <Text dimColor>
+            {at + 1}/{pageCount}
+          </Text>
+          <Button plain dimColor={at === pageCount - 1} onPress={turn(1)}>
+            Next ›
+          </Button>
+        </Box>
+      )
+
       return (
         <Box flexDirection="column" width={width} paddingRight={1}>
           <Box justifyContent="space-between">
-            <Text bold underline>
+            <Text bold underline color={colors[side]}>
               {side === 'after' ? 'After' : 'Before'} ({meta.messages[side]} msgs, {total} chunks)
             </Text>
-            {pageCount > 1 && (
-              <Box gap={1}>
-                <Button plain hotkey={keys.prev} dimColor={at === 0} onPress={turn(-1)}>
-                  ‹
-                </Button>
-                <Text dimColor>
-                  {at + 1}/{pageCount}
-                </Text>
-                <Button plain hotkey={keys.next} dimColor={at === pageCount - 1} onPress={turn(1)}>
-                  ›
-                </Button>
-              </Box>
-            )}
+            {pager}
           </Box>
           {chunks.length === 0 && <Text dimColor>(empty)</Text>}
           {chunks.map((chunk: Chunk) => (
             <Box flexDirection="column" marginTop={1}>
               <Text dimColor>
-                <Text bold color={chunk.role === 'user' ? 'cyan' : 'green'}>
+                <Text bold color={chunk.role === 'user' ? colors.user : colors.assistant}>
                   {chunk.role}
                 </Text>{' '}
                 · msg {chunk.m + 1}
@@ -306,6 +319,11 @@ export const register: Register = (on, options) => {
               <Text wrap="wrap">{chunk.text}</Text>
             </Box>
           ))}
+          {pager && (
+            <Box marginTop={1} justifyContent="flex-end">
+              {pager}
+            </Box>
+          )}
         </Box>
       )
     }
@@ -314,25 +332,29 @@ export const register: Register = (on, options) => {
     const half = isSideBySide ? Math.floor(columns / 2) : columns
     const body =
       mode === 'after' ? (
-        await column('after', columns, { prev: 'h', next: 'l' })
+        await column('after', columns)
       ) : mode === 'before' ? (
-        await column('before', columns, { prev: 'p', next: 'n' })
+        await column('before', columns)
       ) : (
         <Box flexDirection={isSideBySide ? 'row' : 'column'}>
-          {await column('after', half, { prev: 'h', next: 'l' })}
-          {await column('before', half, { prev: 'p', next: 'n' })}
+          {await column('after', half)}
+          {await column('before', half)}
         </Box>
       )
 
     return (
       <Box flexDirection="column">
         <Box justifyContent="space-between">
-          {heading}
+          {picker}
           {toggle}
         </Box>
-        {picker}
-        <Text dimColor>{summary}</Text>
-        {meta.instructions && <Text dimColor>instructions: {meta.instructions}</Text>}
+        {stats}
+        <Box marginTop={1}>
+          <Text wrap="wrap">
+            <Text bold>Instructions: </Text>
+            {meta.instructions ?? <Text dimColor>none typed after /compact (the default summary prompt only)</Text>}
+          </Text>
+        </Box>
         <Box marginTop={1}>{body}</Box>
       </Box>
     )

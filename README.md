@@ -1,10 +1,10 @@
 # visible-compact
 
-A Claude Code mod that shows what a compaction actually did. The **Your last compact** pane puts the compacted result (after) next to the conversation that was sent to be compacted (before).
+A Claude Code mod that shows what a compaction actually did. The **Your compaction history** pane puts the compacted result (after) next to the conversation that was sent to be compacted (before).
 
 ## What it does
 
-- **On `/compact`** it records what went in and what came back, then opens **Your last compact** on it.
+- **On `/compact`** it records what went in and what came back, then opens **Your compaction history** on it.
 - **Auto-compactions and subagent compactions** are recorded too. They don't open the pane, but they show up in its picker.
 - **`/show-last-compact`** reopens the pane on the newest compaction.
 

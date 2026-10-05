@@ -1,4 +1,7 @@
 /** Which columns the pane shows. */
+/** The palette the pane draws in; plugins aren't told the app's theme. */
+export type Theme = 'light' | 'dark'
+
 export type ViewMode = 'after' | 'both' | 'before'
 
 export type Side = 'before' | 'after'
@@ -46,6 +49,7 @@ declare module 'claude-code' {
       selected: string | null
       view: ViewMode
       pages: Record<Side, number>
+      theme: Theme
     }
   }
 }
