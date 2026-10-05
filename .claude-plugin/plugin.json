@@ -23,11 +23,7 @@
     "storage": {
       "type": "string",
       "title": "Where compactions are saved",
-      "description": "temp: the OS temp folder, cleaned up by the OS (lost on reboot or after a few idle days). home: ~/.claude/visible-compact, kept until you delete it.",
-      "options": [
-        "temp",
-        "home"
-      ],
+      "description": "temp or home. temp (default): the OS temp folder, cleaned up by the OS (lost on reboot or after a few idle days). home: ~/.claude/visible-compact, kept until you delete it. Any other value is treated as temp.",
       "default": "temp"
     }
   }
