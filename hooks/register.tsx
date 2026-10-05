@@ -268,9 +268,16 @@ export const register: Register = (on, options) => {
     // When, who and what triggered it are in the picker; message counts head each column.
     const stats = (
       <Box justifyContent="space-between">
-        <Text dimColor>
-          Tokens reduced to <Text color={colors.after}>{tokens(meta.tokensAfter)}</Text> from{' '}
-          <Text color={colors.before}>{tokens(meta.tokensBefore)}</Text>
+        {/* Only the words are dim, so the bold numbers don't inherit it. */}
+        <Text>
+          <Text dimColor>Tokens reduced to </Text>
+          <Text bold color={colors.after}>
+            {tokens(meta.tokensAfter)}
+          </Text>
+          <Text dimColor> from </Text>
+          <Text bold color={colors.before}>
+            {tokens(meta.tokensBefore)}
+          </Text>
         </Text>
         <Text dimColor>Took: {(meta.durationMs / 1000).toFixed(1)}s</Text>
       </Box>
