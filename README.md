@@ -29,6 +29,8 @@ The **Where compactions are saved** setting (`storage`) chooses the location:
 
 Changing the setting doesn't move existing compactions. The picker lists only what's in the current location.
 
+Type `temp` or `home` for this setting. Any other value is treated as `temp`.
+
 ## Install (local)
 
 ```bash
@@ -48,6 +50,12 @@ For the Desktop app, add the folder to `CLAUDE_CODE_PLUGIN_DIRS` in the `env` bl
 - The names of running subagents, to label their compactions in the picker.
 
 **What it writes:** a copy of each compaction, as JSON, under `<location>/visible-compact/sessions/<session id>/` (see [Storage](#storage)). It writes nothing else on disk. It remembers your light/dark choice in Claude Code's plugin storage.
+
+- These files are plain data that only this mod reads back, to draw its pane. No tool runs them or reads them as settings or instructions.
+- It never writes a build, start-up, settings or instructions file.
+- The path is built at run time, from the temp or home folder and the session id, so it can't be written as fixed text.
+
+**Files it ships:** the only image is `.claude-plugin/icon.png`, the icon for the plugin directory. Nothing in the mod loads or runs it.
 
 **How it hooks into Claude Code:**
 
