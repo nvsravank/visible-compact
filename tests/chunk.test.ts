@@ -24,7 +24,7 @@ describe('chunkText', () => {
   })
 
   test('a long paragraph is cut at a line break first', () => {
-    const text = `${'a'.repeat(6)}\n${'b'.repeat(6)}`
+    const text = 'a'.repeat(6) + '\n' + 'b'.repeat(6)
     expect(chunkText(text, 10)).toEqual(['a'.repeat(6), 'b'.repeat(6)])
   })
 
@@ -37,8 +37,8 @@ describe('chunkText', () => {
   })
 
   test('no chunk is over the limit, and nothing but whitespace is lost', () => {
-    const para = (n: number) => Array.from({ length: n }, (_, i) => `word${i}`).join(' ')
-    const text = [para(3), para(80), `${para(20)}\n${para(30)}`, 'z'.repeat(300), para(5)].join('\n\n')
+    const para = (n: number) => Array.from({ length: n }, (_, i) => 'word' + i).join(' ')
+    const text = [para(3), para(80), para(20) + '\n' + para(30), 'z'.repeat(300), para(5)].join('\n\n')
     for (const max of [20, 64, 150, 1000]) {
       const chunks = chunkText(text, max)
       for (const c of chunks) expect(c.length).toBeLessThanOrEqual(max)

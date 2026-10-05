@@ -29,23 +29,64 @@ The **Where compactions are saved** setting (`storage`) chooses the location:
 
 Changing the setting doesn't move existing compactions. The picker lists only what's in the current location.
 
-## Install
+## Install (local)
 
-```sh
+```bash
 claude --plugin-dir /path/to/visible-compact
 ```
 
+For the Desktop app, add the folder to `CLAUDE_CODE_PLUGIN_DIRS` in the `env` block of `~/.claude/settings.json` (separate several folders with `:`), then restart the app.
+
+## What it runs and changes
+
+**It sends nothing anywhere.** The mod makes no network requests and runs no programs. It reads your conversation only when it is compacted, and shows it in its own pane.
+
+**What it reads:**
+
+- At each compaction: the messages sent to be compacted, the summary that came back, the token counts, how long it took, and any instructions you typed after `/compact`.
+- The environment variables `TMPDIR`, `TEMP` and `TMP` (or `HOME` and `USERPROFILE` with the `home` setting), only to find the folder it saves to. It reads no other variables, and no credentials.
+- The names of running subagents, to label their compactions in the picker.
+
+**What it writes:** a copy of each compaction, as JSON, under `<location>/visible-compact/sessions/<session id>/` (see [Storage](#storage)). It writes nothing else on disk. It remembers your light/dark choice in Claude Code's plugin storage.
+
+**How it hooks into Claude Code:**
+
+- It adds the `/show-last-compact` command and answers only that command.
+- On `session.compact` it lets the compaction run unchanged, then records the result. It never changes, skips or delays a compaction.
+- It hooks `session.start` and `session.end` only to load and reset its own list, and passes both through unchanged.
+- It doesn't watch tool calls or prompts, and never approves, blocks or alters anything.
+
+**To remove what it leaves behind,** delete the `visible-compact` folder in your temp folder, or `~/.claude/visible-compact` if you chose `home`.
+
+## Platforms
+
+Tested on macOS, in the terminal and the Desktop app. It is written to work on Linux and Windows too, but it has not been tested on Windows yet. If you try it there, please [open an issue](https://github.com/nvsravank/visible-compact/issues/new/choose) whether it works or not.
+
+## Feedback
+
+Bug reports and feature requests are welcome as [issues](https://github.com/nvsravank/visible-compact/issues/new/choose). This project doesn't accept pull requests; see [CONTRIBUTING.md](CONTRIBUTING.md). Report security problems privately, as described in [SECURITY.md](SECURITY.md).
+
 ## Develop
 
-```sh
+```bash
 claude plugin validate .
+```
+
+```bash
 claude plugin test .
 ```
 
 Layout:
 
 - `.claude-plugin/plugin.json`: manifest
+- `.claude-plugin/icon.png`: directory icon
 - `hooks/register.tsx`: hooks, storage and the pane
 - `hooks/chunk.ts`: message flattening and paragraph-aware chunking
 - `types/index.d.ts`: shared types and the `$.state` contract
 - `tests/`: unit tests for the chunker
+
+The Claude Code function-hooks API is in early access and may change between releases.
+
+## License
+
+MIT. See [LICENSE](LICENSE).

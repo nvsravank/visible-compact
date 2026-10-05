@@ -1,10 +1,23 @@
 {
   "name": "visible-compact",
+  "displayName": "Visible Compact",
   "version": "0.1.0",
   "description": "Shows the conversation before and after /compact side by side in a pane; /show-last-compact reopens it",
   "author": {
-    "name": "nvsravank"
+    "name": "Sravan",
+    "url": "https://github.com/nvsravank"
   },
+  "homepage": "https://github.com/nvsravank/visible-compact",
+  "repository": "https://github.com/nvsravank/visible-compact",
+  "license": "MIT",
+  "keywords": [
+    "compact",
+    "compaction",
+    "context",
+    "summary",
+    "conversation",
+    "before-after"
+  ],
   "types": "./types/index.d.ts",
   "userConfig": {
     "storage": {

@@ -103,7 +103,7 @@ const PALETTES: Record<Theme, Palette> = {
   light: { after: '#1a7f37', before: '#9a6700', user: '#0969da', assistant: '#8250df' },
   dark: { after: '#7ee787', before: '#e3b341', user: '#79c0ff', assistant: '#d2a8ff' },
 }
-const THEME_STORE_KEY = 'theme'
+const THEME_STORE_NAME = 'theme'
 
 const index = atom({ plugin: 'visible-compact', key: 'index' } as const, [])
 const selected = atom({ plugin: 'visible-compact', key: 'selected' } as const, null)
@@ -113,7 +113,7 @@ const theme = atom({ plugin: 'visible-compact', key: 'theme' } as const, 'light'
 
 const toggleTheme = async ($: EngineInterface) => {
   const next = await update($, theme, current => (current === 'light' ? 'dark' : 'light'))
-  await $.store.set(THEME_STORE_KEY, next)
+  await $.store.set(THEME_STORE_NAME, next)
 }
 
 const tokens = (n?: number) =>
@@ -148,7 +148,7 @@ export const register: Register = (on, options) => {
     const saved = await readIndex($)
     await update($, index, () => saved)
     // Restore the light/dark pick saved in an earlier session.
-    const savedTheme = await $.store.get(THEME_STORE_KEY)
+    const savedTheme = await $.store.get(THEME_STORE_NAME)
     if (savedTheme === 'light' || savedTheme === 'dark') await update($, theme, () => savedTheme)
 
     return next(e)
