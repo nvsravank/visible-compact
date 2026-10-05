@@ -272,11 +272,12 @@ export const register: Register = (on, options) => {
           Tokens reduced to <Text color={colors.after}>{tokens(meta.tokensAfter)}</Text> from{' '}
           <Text color={colors.before}>{tokens(meta.tokensBefore)}</Text>
         </Text>
-        <Text dimColor>took {(meta.durationMs / 1000).toFixed(1)}s</Text>
+        <Text dimColor>Took: {(meta.durationMs / 1000).toFixed(1)}s</Text>
       </Box>
     )
 
-    const column = async (side: Side, width: number) => {
+    // `gap` is the blank rows above the column, so a stacked Before stands apart from After's end.
+    const column = async (side: Side, width: number, gap = 1) => {
       const total = meta.chunks[side]
       const pageCount = Math.max(1, Math.ceil(total / PAGE_CHUNKS))
       const at = Math.min(page[side], pageCount - 1)
@@ -299,7 +300,7 @@ export const register: Register = (on, options) => {
       )
 
       return (
-        <Box flexDirection="column" width={width} paddingRight={1}>
+        <Box flexDirection="column" width={width} paddingRight={1} marginTop={gap}>
           <Box justifyContent="space-between">
             <Text bold underline color={colors[side]}>
               {side === 'after' ? 'After' : 'Before'} ({meta.messages[side]} msgs, {total} chunks)
@@ -338,7 +339,7 @@ export const register: Register = (on, options) => {
       ) : (
         <Box flexDirection={isSideBySide ? 'row' : 'column'}>
           {await column('after', half)}
-          {await column('before', half)}
+          {await column('before', half, isSideBySide ? 1 : 3)}
         </Box>
       )
 
@@ -355,7 +356,7 @@ export const register: Register = (on, options) => {
             {meta.instructions ?? <Text dimColor>none typed after /compact (the default summary prompt only)</Text>}
           </Text>
         </Box>
-        <Box marginTop={1}>{body}</Box>
+        {body}
       </Box>
     )
   })

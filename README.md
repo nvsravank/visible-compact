@@ -10,11 +10,13 @@ A Claude Code mod that shows what a compaction actually did. The **Your compacti
 
 ## The pane
 
-- **Picker:** every compaction in this session, newest first, labelled with time, main or subagent, trigger, and tokens before → after.
-- **View toggle (top right):** `◧` after only, `◫` both, `◨` before only (hotkeys `a`, `s`, `b`). The buttons sit in the same order as the columns: after on the left, before on the right. When the pane is narrower than 80 columns, "both" stacks after above before.
-- **Summary line:** trigger, time, how long it took, tokens before → after, message counts, and the summarizer's token usage when reported.
+- **Picker:** every compaction in this session, newest first, labelled with time, main or subagent, and trigger.
+- **View toggle (top right):** `◧ After`, `◫ Both`, `◨ Before`. The buttons sit in the same order as the columns: after on the left, before on the right. When the pane is narrower than 80 columns, "both" stacks after above before, with extra space above Before.
+- **Theme (`☾`/`☀`):** plugins aren't told the app's light or dark theme, so pick it here. The choice is remembered across sessions.
+- **Tokens line:** "Tokens reduced to X from Y", colored to match the After and Before headers, with how long the compaction took on the right.
+- **Instructions:** the text typed after `/compact`, if any. The engine's own summary prompt isn't available to plugins.
 - **Chunks:** each message is split into chunks of at most 4,000 characters. Splits fall at paragraph breaks where possible, then at line breaks, then at spaces. Each chunk is labelled with its role, message number and part. Tool calls are shown with their inputs, and tool results in full.
-- **Paging:** each column shows 10 chunks per page. Use `‹ ›` to page: hotkeys `h`/`l` for after, `p`/`n` for before.
+- **Paging:** each column shows 10 chunks per page. `‹ Previous` and `Next ›` sit in the column header and again at its bottom.
 
 ## Storage
 
@@ -37,6 +39,7 @@ claude --plugin-dir /path/to/visible-compact
 
 ```sh
 claude plugin validate .
+claude plugin test .
 ```
 
 Layout:
@@ -45,3 +48,4 @@ Layout:
 - `hooks/register.tsx`: hooks, storage and the pane
 - `hooks/chunk.ts`: message flattening and paragraph-aware chunking
 - `types/index.d.ts`: shared types and the `$.state` contract
+- `tests/`: unit tests for the chunker
