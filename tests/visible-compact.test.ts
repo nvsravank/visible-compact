@@ -3,7 +3,7 @@ import { expect, test } from 'claude-code/testing'
 import { toLines, toRecord } from '../hooks/register'
 
 const PANE_PROPS = {
-  title: 'Compaction: before / after',
+  title: 'Your last compact',
   isFocused: false,
   bodyColumns: 120,
   placement: 'dock' as const,

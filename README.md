@@ -4,7 +4,7 @@ A Claude Code mod that shows what `/compact` actually did: the conversation that
 
 ## What it does
 
-- **On `/compact`** it hooks `session.compact`, records the transcript going in and the messages coming back (plus token counts and any instructions you gave), and opens the **Compaction: before / after** pane.
+- **On `/compact`** it hooks `session.compact`, records the transcript going in and the messages coming back (plus token counts and any instructions you gave), and opens the **Your last compact** pane.
 - **Auto-compactions** are recorded too, but don't pop the pane open.
 - **`/show-last-compact`** reopens the pane for the most recent compaction in this session.
 

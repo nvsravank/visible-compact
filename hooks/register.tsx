@@ -9,7 +9,7 @@ import type {
 import type { CompactLine, CompactRecord } from '../types'
 
 const PANE = 'visible-compact'
-const TITLE = 'Compaction: before / after'
+const TITLE = 'Your last compact'
 const COMMAND = 'show-last-compact'
 // Below this many body columns the two sides stack instead of sitting side by side.
 const SIDE_BY_SIDE_MIN = 80
