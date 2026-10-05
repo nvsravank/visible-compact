@@ -1,0 +1,9 @@
+{
+  "name": "visible-compact",
+  "version": "0.1.0",
+  "description": "Shows the conversation before and after /compact side by side in a pane; /show-last-compact reopens it",
+  "author": {
+    "name": "nvsravank"
+  },
+  "types": "./types/index.d.ts"
+}
