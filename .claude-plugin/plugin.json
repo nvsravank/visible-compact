@@ -1,0 +1,34 @@
+{
+  "name": "visible-compact",
+  "displayName": "Visible Compact",
+  "version": "0.1.0",
+  "description": "Shows the conversation before and after /compact side by side in a pane; /show-last-compact reopens it",
+  "author": {
+    "name": "Sravan",
+    "url": "https://github.com/nvsravank"
+  },
+  "homepage": "https://github.com/nvsravank/visible-compact",
+  "repository": "https://github.com/nvsravank/visible-compact",
+  "license": "MIT",
+  "keywords": [
+    "compact",
+    "compaction",
+    "context",
+    "summary",
+    "conversation",
+    "before-after"
+  ],
+  "types": "./types/index.d.ts",
+  "userConfig": {
+    "storage": {
+      "type": "string",
+      "title": "Where compactions are saved",
+      "description": "temp: the OS temp folder, cleaned up by the OS (lost on reboot or after a few idle days). home: ~/.claude/visible-compact, kept until you delete it.",
+      "options": [
+        "temp",
+        "home"
+      ],
+      "default": "temp"
+    }
+  }
+}
