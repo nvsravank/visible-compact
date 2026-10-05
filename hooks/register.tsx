@@ -227,17 +227,33 @@ export const register: Register = (on, options) => {
 
     const setView = (next: ViewMode) => () => void update($, view, () => next)
     // Laid out as the columns are: after on the left, before on the right.
+    // A Button's label is one plain string, so the selected mode is drawn as bold
+    // text in its column's color instead; pressing it would change nothing anyway.
+    const modes = [
+      { mode: 'after' as const, label: '◧ After', selected: <Text bold color={colors.after}>◧ After</Text> },
+      {
+        mode: 'both' as const,
+        label: '◫ Both',
+        selected: (
+          <Text>
+            <Text bold color={colors.after}>◫ Bo</Text>
+            <Text bold color={colors.before}>th</Text>
+          </Text>
+        ),
+      },
+      { mode: 'before' as const, label: '◨ Before', selected: <Text bold color={colors.before}>◨ Before</Text> },
+    ]
     const toggle = (
       <Box gap={1}>
-        <Button plain dimColor={mode !== 'after'} onPress={setView('after')}>
-          ◧ After
-        </Button>
-        <Button plain dimColor={mode !== 'both'} onPress={setView('both')}>
-          ◫ Both
-        </Button>
-        <Button plain dimColor={mode !== 'before'} onPress={setView('before')}>
-          ◨ Before
-        </Button>
+        {modes.map(m =>
+          m.mode === mode ? (
+            <Box key={m.mode}>{m.selected}</Box>
+          ) : (
+            <Button key={m.mode} plain dimColor onPress={setView(m.mode)}>
+              {m.label}
+            </Button>
+          ),
+        )}
         {/* Shows the mode a press switches to: ☾ while light, ☀ while dark. */}
         <Button plain onPress={() => void toggleTheme($)}>
           {colorTheme === 'light' ? '☾' : '☀'}
