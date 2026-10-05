@@ -7,12 +7,21 @@ import { chunkMessages } from './chunk'
 /** Chunks per file: 100 × 4,000 chars stays well under the 4 MiB a file read or write allows. */
 export const FILE_CHUNKS = 100
 
-const sessionDir = async ($: EngineInterface) => {
-  const home = (await $.env.get('HOME')) ?? (await $.env.get('USERPROFILE')) ?? '.'
-  const id = await $.session.id()
+type Storage = 'temp' | 'home'
+// From the plugin's settings; a change there reloads the module, so register sets it again.
+let storage: Storage = 'temp'
 
-  return `${home}/.claude/visible-compact/sessions/${id}`
+const baseDir = async ($: EngineInterface) => {
+  if (storage === 'home') {
+    const home = (await $.env.get('HOME')) ?? (await $.env.get('USERPROFILE')) ?? '.'
+    return `${home}/.claude/visible-compact`
+  }
+  const temp =
+    (await $.env.get('TMPDIR')) ?? (await $.env.get('TEMP')) ?? (await $.env.get('TMP')) ?? '/tmp'
+  return `${temp.replace(/[\\/]$/, '')}/visible-compact`
 }
+
+const sessionDir = async ($: EngineInterface) => `${await baseDir($)}/sessions/${await $.session.id()}`
 
 const chunkFile = (dir: string, id: string, side: Side, file: number) =>
   `${dir}/${id}.${side}.${file}.json`
@@ -113,7 +122,9 @@ const show = async ($: EngineInterface, id: string | null) => {
   await update($, pages, () => ({ before: 0, after: 0 }))
 }
 
-export const register: Register = on => {
+export const register: Register = (on, options) => {
+  storage = options.storage === 'home' ? 'home' : 'temp'
+
   on('session.start', async ($, e, next) => {
     await $.command.register({
       name: COMMAND,

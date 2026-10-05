@@ -18,7 +18,14 @@ A Claude Code mod that shows what a compaction actually did. The **Your last com
 
 ## Storage
 
-Compactions are saved to `~/.claude/visible-compact/sessions/<session id>/`. That folder holds an `index.json` plus the chunk files, at most 100 chunks per file. Because they're keyed to the session id, restarting Claude Code or using `--resume` keeps them. `/clear` starts a new session id with nothing recorded.
+Each compaction is saved under `<location>/visible-compact/sessions/<session id>/`. That folder holds an `index.json` plus the chunk files, at most 100 chunks per file. Because the folder is named after the session id, restarting Claude Code or using `--resume` keeps your compactions. `/clear` starts a new session id with nothing recorded.
+
+The **Where compactions are saved** setting (`storage`) chooses the location:
+
+- `temp` (default): the OS temp folder (`TMPDIR`, `TEMP` or `TMP`, else `/tmp`). The OS cleans it up for you. Linux usually wipes `/tmp` on reboot. macOS clears it on reboot and removes files left unused for about 3 days. Windows Storage Sense may clear it. Resuming an old session can therefore show an empty picker.
+- `home`: `~/.claude/visible-compact`. Compactions are kept until you delete them, at roughly 4–5 MB for a 1M-token compaction.
+
+Changing the setting doesn't move existing compactions. The picker lists only what's in the current location.
 
 ## Install
 
