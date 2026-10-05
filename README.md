@@ -15,7 +15,7 @@ A Claude Code mod that shows what a compaction actually did. The **Your compacti
 - **Theme (`☾`/`☀`):** plugins aren't told the app's light or dark theme, so pick it here. The choice is remembered across sessions.
 - **Tokens line:** "Tokens reduced to X from Y", colored to match the After and Before headers, with how long the compaction took on the right.
 - **Instructions:** the text typed after `/compact`, if any. The engine's own summary prompt isn't available to plugins.
-- **Chunks:** each message is split into chunks of at most 4,000 characters. Splits fall at paragraph breaks where possible, then at line breaks, then at spaces. Each chunk is labelled with its role, message number and part, and drawn as Markdown, the way an assistant reply is. Tool calls are shown with their inputs, and tool results in full.
+- **Chunks:** each message is split into chunks of at most 4,000 characters. Splits fall at paragraph breaks where possible, then at line breaks, then at spaces. Each chunk is labelled with its role, message number and part, and drawn as Markdown, the way an assistant reply is. Tool calls are shown with their inputs, and tool results in full, both as code blocks so their line breaks and indents are kept. A code block is never split across chunks unless it is longer than one chunk; then each part repeats its fence.
 - **Paging:** each column shows 10 chunks per page. `‹ Previous` and `Next ›` sit in the column header and again at its bottom.
 
 ## Storage
