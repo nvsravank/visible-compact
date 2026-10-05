@@ -1,18 +1,26 @@
 # visible-compact
 
-A Claude Code mod that shows what `/compact` actually did: the conversation that was sent for compaction and the compacted result, side by side in a pane.
+A Claude Code mod that shows what a compaction actually did. The **Your last compact** pane puts the compacted result (after) next to the conversation that was sent to be compacted (before).
 
 ## What it does
 
-- **On `/compact`** it hooks `session.compact`, records the transcript going in and the messages coming back (plus token counts and any instructions you gave), and opens the **Your last compact** pane.
-- **Auto-compactions** are recorded too, but don't pop the pane open.
-- **`/show-last-compact`** reopens the pane for the most recent compaction in this session.
+- **On `/compact`** it records what went in and what came back, then opens **Your last compact** on it.
+- **Auto-compactions and subagent compactions** are recorded too. They don't open the pane, but they show up in its picker.
+- **`/show-last-compact`** reopens the pane on the newest compaction.
 
-The two sides sit next to each other when the pane is at least 80 columns wide and stack otherwise. Each message is capped at 4,000 characters. Subagent compactions and precomputed (speculative) compactions are ignored.
+## The pane
+
+- **Picker:** every compaction in this session, newest first, labelled with time, main or subagent, trigger, and tokens before → after.
+- **View toggle (top right):** `◧` after only, `◫` both, `◨` before only (hotkeys `a`, `s`, `b`). The buttons sit in the same order as the columns: after on the left, before on the right. When the pane is narrower than 80 columns, "both" stacks after above before.
+- **Summary line:** trigger, time, how long it took, tokens before → after, message counts, and the summarizer's token usage when reported.
+- **Chunks:** each message is split into chunks of at most 4,000 characters. Splits fall at paragraph breaks where possible, then at line breaks, then at spaces. Each chunk is labelled with its role, message number and part. Tool calls are shown with their inputs, and tool results in full.
+- **Paging:** each column shows 10 chunks per page. Use `‹ ›` to page: hotkeys `h`/`l` for after, `p`/`n` for before.
+
+## Storage
+
+Compactions are saved to `~/.claude/visible-compact/sessions/<session id>/`. That folder holds an `index.json` plus the chunk files, at most 100 chunks per file. Because they're keyed to the session id, restarting Claude Code or using `--resume` keeps them. `/clear` starts a new session id with nothing recorded.
 
 ## Install
-
-Point Claude Code at this folder:
 
 ```sh
 claude --plugin-dir /path/to/visible-compact
@@ -21,13 +29,12 @@ claude --plugin-dir /path/to/visible-compact
 ## Develop
 
 ```sh
-claude plugin validate .   # manifest + hooks check
-claude plugin test .       # runs tests/*.test.ts
+claude plugin validate .
 ```
 
 Layout:
 
-- `.claude-plugin/plugin.json` — manifest
-- `hooks/hooks.json`, `hooks/register.tsx` — the hooks module
-- `types/index.d.ts` — the `$.state` contract
-- `tests/` — tests for `claude plugin test`
+- `.claude-plugin/plugin.json`: manifest
+- `hooks/register.tsx`: hooks, storage and the pane
+- `hooks/chunk.ts`: message flattening and paragraph-aware chunking
+- `types/index.d.ts`: shared types and the `$.state` contract
