@@ -24,12 +24,22 @@ Each compaction is saved under `<location>/visible-compact/sessions/<session id>
 
 The **Where compactions are saved** setting (`storage`) chooses the location:
 
-- `temp` (default): the OS temp folder (`TMPDIR`, `TEMP` or `TMP`, else `/tmp`). The OS cleans it up for you. Linux usually wipes `/tmp` on reboot. macOS clears it on reboot and removes files left unused for about 3 days. Windows Storage Sense may clear it. Resuming an old session can therefore show an empty picker.
-- `home`: `~/.claude/visible-compact`. Compactions are kept until you delete them, at roughly 4–5 MB for a 1M-token compaction.
+- `temp` (default): the OS temp folder (`TMPDIR`, `TEMP` or `TMP`, else `/tmp`).
+- `home`: `~/.claude/visible-compact`, at roughly 4–5 MB for a 1M-token compaction.
+- `memory`: nothing is written to disk. Compactions are kept only while Claude Code runs, and are gone when it exits, on `/clear`, or when the plugin reloads (for example after a settings change).
 
-Changing the setting doesn't move existing compactions. The picker lists only what's in the current location.
+Type `temp`, `home` or `memory` for this setting. Any other value is treated as `temp`. Changing it doesn't move existing compactions; the picker lists only what's in the current location.
 
-Type `temp` or `home` for this setting. Any other value is treated as `temp`.
+### Retention
+
+Compactions are kept as long as Claude Code keeps its own transcripts: the `cleanupPeriodDays` setting in your Claude Code `settings.json`, or 30 days when it isn't set.
+
+- **When:** at every session start and session end. The sweep at start catches anything a crash or a killed process left behind.
+- **What:** every session's folder, not only the current one's, in both the temp and home locations, whichever `storage` is set now. Each compaction recorded more than `cleanupPeriodDays` ago is cleared, as is any of its files last written before then.
+- **How:** the plugin API can't delete files, so each expired file is overwritten with nothing. No conversation text, summary or metadata remains. Empty files and the session-id folder names stay until the OS clears the temp folder or you delete them (see below).
+- **`cleanupPeriodDays: 0`:** as Claude Code keeps no transcripts then, the plugin keeps nothing on disk. It clears everything already saved and uses `memory` storage whatever `storage` says.
+
+With `temp`, the OS may also clear the folder sooner. Linux usually wipes `/tmp` on reboot, and macOS clears it on reboot and removes files left unused for about 3 days. Resuming an old session can therefore show an empty picker.
 
 ## Install (local)
 
@@ -46,10 +56,11 @@ For the Desktop app, add the folder to `CLAUDE_CODE_PLUGIN_DIRS` in the `env` bl
 **What it reads:**
 
 - At each compaction: the messages sent to be compacted, the summary that came back, the token counts, how long it took, and any instructions you typed after `/compact`.
-- The environment variables `TMPDIR`, `TEMP` and `TMP` (or `HOME` and `USERPROFILE` with the `home` setting), only to find the folder it saves to. It reads no other variables, and no credentials.
+- The environment variables `TMPDIR`, `TEMP`, `TMP`, `HOME` and `USERPROFILE`, only to find the folders it saves to and clears. It reads no other variables, and no credentials.
+- One Claude Code setting, `cleanupPeriodDays`, to know how long to keep compactions (see [Retention](#retention)).
 - The names of running subagents, to label their compactions in the picker.
 
-**What it writes:** a copy of each compaction, as JSON, under `<location>/visible-compact/sessions/<session id>/` (see [Storage](#storage)). It writes nothing else on disk. It remembers your light/dark choice in Claude Code's plugin storage.
+**What it writes:** a copy of each compaction, as JSON, under `<location>/visible-compact/sessions/<session id>/` (see [Storage](#storage)), unless `storage` is `memory`. When a copy expires, it overwrites those same files with nothing (see [Retention](#retention)). It writes nothing else on disk. It remembers your light/dark choice in Claude Code's plugin storage.
 
 - These files are plain data that only this mod reads back, to draw its pane. No tool runs them or reads them as settings or instructions.
 - It never writes a build, start-up, settings or instructions file.
@@ -61,10 +72,10 @@ For the Desktop app, add the folder to `CLAUDE_CODE_PLUGIN_DIRS` in the `env` bl
 
 - It adds the `/show-last-compact` command and answers only that command.
 - On `session.compact` it lets the compaction run unchanged, then records the result. It never changes, skips or delays a compaction.
-- It hooks `session.start` and `session.end` only to load and reset its own list, and passes both through unchanged.
+- It hooks `session.start` and `session.end` only to load and reset its own list and clear expired compactions, and passes both through unchanged.
 - It doesn't watch tool calls or prompts, and never approves, blocks or alters anything.
 
-**To remove what it leaves behind,** delete the `visible-compact` folder in your temp folder, or `~/.claude/visible-compact` if you chose `home`.
+**To remove what it leaves behind,** delete the `visible-compact` folder in your temp folder, and `~/.claude/visible-compact` if you ever used `home`. For example, on macOS or Linux: `rm -rf "${TMPDIR:-/tmp}/visible-compact" ~/.claude/visible-compact`; on Windows, `%TEMP%\visible-compact` and `%USERPROFILE%\.claude\visible-compact`.
 
 ## Platforms
 
@@ -88,10 +99,11 @@ Layout:
 
 - `.claude-plugin/plugin.json`: manifest
 - `.claude-plugin/icon.png`: directory icon
-- `hooks/register.tsx`: hooks, storage and the pane
+- `hooks/register.tsx`: hooks and the pane
+- `hooks/storage.ts`: where compactions are saved, read back and cleared
 - `hooks/chunk.ts`: message flattening and paragraph-aware chunking
 - `types/index.d.ts`: shared types and the `$.state` contract
-- `tests/`: unit tests for the chunker
+- `tests/`: unit tests for the chunker and for retention
 
 The Claude Code function-hooks API is in early access and may change between releases.
 

@@ -3,90 +3,16 @@ import type { EngineInterface, Register } from 'claude-code'
 
 import type { Chunk, CompactMeta, Side, Theme, ViewMode } from '../types'
 import { chunkMessages } from './chunk'
-
-/** Chunks per file: 100 × 4,000 chars stays well under the 4 MiB a file read or write allows. */
-export const FILE_CHUNKS = 100
-
-type Storage = 'temp' | 'home'
-// From the plugin's settings; a change there reloads the module, so register sets it again.
-let storage: Storage = 'temp'
-
-const baseDir = async ($: EngineInterface) => {
-  if (storage === 'home') {
-    const home = (await $.env.get('HOME')) ?? (await $.env.get('USERPROFILE')) ?? '.'
-    return `${home}/.claude/visible-compact`
-  }
-  const temp =
-    (await $.env.get('TMPDIR')) ?? (await $.env.get('TEMP')) ?? (await $.env.get('TMP')) ?? '/tmp'
-  return `${temp.replace(/[\\/]$/, '')}/visible-compact`
-}
-
-const sessionDir = async ($: EngineInterface) => `${await baseDir($)}/sessions/${await $.session.id()}`
-
-const chunkFile = (dir: string, id: string, side: Side, file: number) =>
-  `${dir}/${id}.${side}.${file}.json`
-
-export const readIndex = async ($: EngineInterface): Promise<CompactMeta[]> => {
-  const path = `${await sessionDir($)}/index.json`
-  if (!(await $.fs.exists(path))) return []
-  try {
-    return JSON.parse(await $.fs.read(path)) as CompactMeta[]
-  } catch {
-    return []
-  }
-}
-
-export const saveCompaction = async (
-  $: EngineInterface,
-  meta: CompactMeta,
-  chunks: Record<Side, Chunk[]>,
-): Promise<CompactMeta[]> => {
-  const dir = await sessionDir($)
-  for (const side of ['before', 'after'] as const) {
-    const list = chunks[side]
-    for (let file = 0; file * FILE_CHUNKS < list.length; file++)
-      await $.fs.write(
-        chunkFile(dir, meta.id, side, file),
-        JSON.stringify(list.slice(file * FILE_CHUNKS, (file + 1) * FILE_CHUNKS)),
-      )
-  }
-  const index = [...(await readIndex($)), meta]
-  await $.fs.write(`${dir}/index.json`, JSON.stringify(index))
-
-  return index
-}
-
-// A few files' worth of chunks, so paging back and forth doesn't re-read.
-const cache = new Map<string, Chunk[]>()
-
-export const readChunks = async (
-  $: EngineInterface,
-  id: string,
-  side: Side,
-  from: number,
-  count: number,
-): Promise<Chunk[]> => {
-  const dir = await sessionDir($)
-  const out: Chunk[] = []
-  for (let at = from; at < from + count; ) {
-    const file = Math.floor(at / FILE_CHUNKS)
-    const path = chunkFile(dir, id, side, file)
-    let list = cache.get(path)
-    if (list === undefined) {
-      if (!(await $.fs.exists(path))) break
-      list = JSON.parse(await $.fs.read(path)) as Chunk[]
-      cache.set(path, list)
-      if (cache.size > 6) cache.delete(cache.keys().next().value!)
-    }
-    const offset = at - file * FILE_CHUNKS
-    const taken = list.slice(offset, offset + (from + count - at))
-    if (taken.length === 0) break
-    out.push(...taken)
-    at += taken.length
-  }
-
-  return out
-}
+import {
+  configure,
+  forgetSession,
+  parseStorage,
+  readIndex,
+  readChunks,
+  readRetentionDays,
+  saveCompaction,
+  sweep,
+} from './storage'
 
 const PANE = 'visible-compact'
 const TITLE = 'Your compaction history'
@@ -136,8 +62,21 @@ const show = async ($: EngineInterface, id: string | null) => {
   await update($, pages, () => ({ before: 0, after: 0 }))
 }
 
+// Clears expired compactions from every session, then reloads this session's list.
+const cleanUp = async ($: EngineInterface) => {
+  try {
+    await readRetentionDays($)
+    const cleared = await sweep($)
+    if (cleared > 0) $.ui.log(`visible-compact: cleared ${cleared} expired file(s)`, { to: 'debug' })
+    const saved = await readIndex($)
+    await update($, index, () => saved)
+  } catch (error) {
+    $.ui.log(`visible-compact: cleanup failed (${String(error)})`, { to: 'debug' })
+  }
+}
+
 export const register: Register = (on, options) => {
-  storage = options.storage === 'home' ? 'home' : 'temp'
+  configure(parseStorage(options.storage))
 
   on('session.start', async ($, e, next) => {
     await $.command.register({
@@ -145,17 +84,24 @@ export const register: Register = (on, options) => {
       description: 'Reopen "Your compaction history": what was compacted, side by side with what came back',
     })
     // Compactions live on disk under the session id, so a restart or --resume picks them up again.
+    await readRetentionDays($)
     const saved = await readIndex($)
     await update($, index, () => saved)
     // Restore the light/dark pick saved in an earlier session.
     const savedTheme = await $.store.get(THEME_STORE_NAME)
     if (savedTheme === 'light' || savedTheme === 'dark') await update($, theme, () => savedTheme)
 
-    return next(e)
+    const started = await next(e)
+    // Also swept at start, since a crash or kill skips session.end. Not awaited: start isn't held up.
+    void cleanUp($)
+
+    return started
   })
 
-  // /clear goes on under a new session id, with nothing compacted yet.
   on('session.end', async ($, e, next) => {
+    await cleanUp($)
+    // Memory storage ends with the session; /clear goes on under a new session id, with nothing compacted yet.
+    await forgetSession($)
     if (e.reason === 'clear') {
       await update($, index, () => [])
       await show($, null)
@@ -186,6 +132,8 @@ export const register: Register = (on, options) => {
       chunks: { before: before.length, after: after.length },
     }
     try {
+      // Picks up a cleanupPeriodDays changed mid-session; 0 keeps this one off disk.
+      await readRetentionDays($)
       const saved = await saveCompaction($, meta, { before, after })
       await update($, index, () => saved)
     } catch (error) {
