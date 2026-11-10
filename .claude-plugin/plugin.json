@@ -1,7 +1,7 @@
 {
   "name": "visible-compact",
   "displayName": "Visible Compact",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "Shows the conversation before and after /compact side by side in a pane; /show-last-compact reopens it",
   "author": {
     "name": "Sravan",
@@ -23,7 +23,7 @@
     "storage": {
       "type": "string",
       "title": "Where compactions are saved",
-      "description": "temp or home. temp (default): the OS temp folder, cleaned up by the OS (lost on reboot or after a few idle days). home: ~/.claude/visible-compact, kept until you delete it. Any other value is treated as temp.",
+      "description": "temp, home or memory. temp (default): the OS temp folder. home: ~/.claude/visible-compact. memory: nothing written to disk; gone when Claude Code exits. On disk, compactions are cleared after Claude Code's cleanupPeriodDays (30 days unless set); cleanupPeriodDays 0 means memory. Any other value is treated as temp.",
       "default": "temp"
     }
   }
